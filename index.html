@@ -392,13 +392,8 @@
     .sidebar .divider,
     .sidebar .btn-danger,
     .sidebar .sidebar-bunn { display: none; }
-    .quiz-area { order: 2; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 1rem; max-width: 100%; }
-    .quiz-area > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: visible; padding: 1.25rem; }
-    #bilde-omrade { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 0.5rem; }
-    #feedback-omrade { flex-shrink: 0; }
-    .fugl-bilde { flex: 1; min-height: 0; object-fit: contain; width: 100%; max-height: none; background: #F0EDE5; }
-    #forsok-teller { flex-shrink: 0; }
-    #bilde-attribution { flex-shrink: 0; }
+    .quiz-area { order: 2; padding: 1rem; padding-bottom: 230px; max-width: 100%; }
+    .fugl-bilde { width: 100%; height: auto; max-height: calc(100dvh - 430px); object-fit: contain; background: #F0EDE5; }
     .burger-btn {
       display: flex;
       flex-direction: column;
@@ -420,11 +415,12 @@
     }
     .aksjon-panel {
       display: block;
-      position: static;
-      margin-top: auto;
-      flex-shrink: 0;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
       background: var(--cream);
-      padding: 0.75rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      padding: 0.75rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -2px 16px rgba(42,31,14,0.12);
+      z-index: 50;
     }
     .aksjon-panel .svar-input { margin-bottom: 0.5rem; }
     .aksjon-panel .knapper { margin-top: 0.4rem; }
@@ -881,23 +877,29 @@ async function hentLyd(fugl) {
   if (nøkkel in lydCache) return lydCache[nøkkel];
   try {
     const r = await fetch(
-      `https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(fugl.latin + ' q_gt:D')}`
+      `https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(fugl.latin)}`
     );
     if (!r.ok) { lydCache[nøkkel] = null; return null; }
     const d = await r.json();
     if (!d.recordings?.length) { lydCache[nøkkel] = null; return null; }
     const rec = d.recordings[0];
     const url = rec.file.startsWith('//') ? 'https:' + rec.file : rec.file;
-    lydCache[nøkkel] = { url, kreditering: rec.rec };
+    lydCache[nøkkel] = { url };
     return lydCache[nøkkel];
   } catch { lydCache[nøkkel] = null; return null; }
 }
 
+function stoppLyd() {
+  const audio = document.getElementById('fugl-audio');
+  audio.pause();
+  audio.currentTime = 0;
+  state.lydSpiller = false;
+}
+
 async function toggleLyd() {
-  if (aktivAudio && !aktivAudio.paused) {
-    aktivAudio.pause();
-    aktivAudio.currentTime = 0;
-    state.lydSpiller = false;
+  const audio = document.getElementById('fugl-audio');
+  if (state.lydSpiller) {
+    stoppLyd();
     render();
     return;
   }
@@ -908,12 +910,12 @@ async function toggleLyd() {
   if (state.aktivFugl !== fuglVedKlikk) return;
   state.lydLastes = false;
   if (!resultat) { render(); return; }
-  aktivAudio = new Audio(resultat.url);
-  aktivAudio.onended = () => { state.lydSpiller = false; render(); };
-  aktivAudio.onerror = () => { state.lydSpiller = false; render(); };
+  audio.src = resultat.url;
+  audio.onended = () => { state.lydSpiller = false; render(); };
+  audio.onerror = () => { state.lydSpiller = false; render(); };
   state.lydSpiller = true;
   render();
-  aktivAudio.play().catch(() => { state.lydSpiller = false; render(); });
+  audio.play().catch(() => { state.lydSpiller = false; render(); });
 }
 
 // ─── FREMGANGSKODE ───────────────────────────────────────────
@@ -1228,7 +1230,7 @@ function visHint() {
 }
 
 function nyFugl() {
-  if (aktivAudio) { aktivAudio.pause(); aktivAudio.currentTime = 0; aktivAudio = null; }
+  stoppLyd();
   if (state.aktivFugl)
     state.historikk = [...state.historikk, state.aktivFugl.id].slice(-10);
   state.aktivFugl        = velgNeste();
@@ -1260,7 +1262,7 @@ function nullstill() {
   state.bildeLastes      = false;
   state.lydLastes        = false;
   state.lydSpiller       = false;
-  if (aktivAudio) { aktivAudio.pause(); aktivAudio = null; }
+  stoppLyd();
   state.aktivFugl        = velgNeste();
   document.getElementById('svar-input').value = '';
   skjulResetModal();
