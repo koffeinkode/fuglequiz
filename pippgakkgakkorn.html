@@ -393,10 +393,10 @@
     .sidebar .btn-danger,
     .sidebar .sidebar-bunn { display: none; }
     .quiz-area { order: 2; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 1rem; max-width: 100%; }
-    .quiz-area > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 1.25rem; }
-    #bilde-omrade { flex: 1; min-height: 0; margin-bottom: 0.5rem; }
+    .quiz-area > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: visible; padding: 1.25rem; }
+    #bilde-omrade { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 0.5rem; }
     #feedback-omrade { flex-shrink: 0; }
-    .fugl-bilde { max-height: none; height: 100%; background: #F0EDE5; }
+    .fugl-bilde { flex: 1; min-height: 0; object-fit: contain; width: 100%; max-height: none; background: #F0EDE5; }
     .burger-btn {
       display: flex;
       flex-direction: column;
