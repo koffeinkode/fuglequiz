@@ -324,7 +324,7 @@
   .aksjon-panel { display: contents; }
 
   @media (max-width: 768px) {
-    body { flex-direction: column !important; }
+    body { flex-direction: column !important; height: 100dvh; overflow: hidden; }
     .sidebar {
       width: 100%; min-height: auto; height: auto;
       position: static;
@@ -360,8 +360,11 @@
     .sidebar .divider,
     .sidebar .btn-danger,
     .sidebar .sidebar-bunn { display: none; }
-    .quiz-area { order: 2; padding: 1rem; padding-bottom: 180px; max-width: 100%; }
-    .fugl-bilde { max-height: 38vh; background: #F0EDE5; }
+    .quiz-area { order: 2; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 1rem; max-width: 100%; }
+    .quiz-area > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 1.25rem; }
+    #bilde-omrade { flex: 1; min-height: 0; margin-bottom: 0.5rem; }
+    #feedback-omrade { flex-shrink: 0; }
+    .fugl-bilde { max-height: none; height: 100%; background: #F0EDE5; }
     .burger-btn {
       display: flex;
       flex-direction: column;
@@ -383,14 +386,11 @@
     }
     .aksjon-panel {
       display: block;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      position: static;
+      margin-top: auto;
+      flex-shrink: 0;
       background: var(--cream);
-      padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-      box-shadow: 0 -2px 16px rgba(42,31,14,0.12);
-      z-index: 50;
+      padding: 0.75rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
     }
     .aksjon-panel .svar-input { margin-bottom: 0.5rem; }
     .aksjon-panel .knapper { margin-top: 0.4rem; }
