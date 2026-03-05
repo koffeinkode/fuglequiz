@@ -176,6 +176,32 @@
     border-color: rgba(238,232,218,0.6);
     background: rgba(255,255,255,0.08);
   }
+  .btn-ghost {
+    background: transparent;
+    color: rgba(238,232,218,0.75);
+    border: 1px solid rgba(238,232,218,0.3);
+    font-size: 0.85rem;
+    padding: 0.6rem 0.75rem;
+  }
+  .btn-ghost:hover {
+    color: #EEE8DA;
+    border-color: rgba(238,232,218,0.6);
+    background: rgba(255,255,255,0.08);
+  }
+  .kode-boks {
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: #F0EDE5;
+    padding: 1rem;
+    border-radius: 8px;
+    word-break: break-all;
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .kode-boks:hover { border-color: var(--forest); }
 
   .modal-overlay {
     position: fixed; inset: 0;
@@ -465,6 +491,7 @@
         <button class="btn btn-secondary" onclick="giOpp()">Vet ikke</button>
       </div>
       <button class="btn btn-secondary" id="vis-fugl-btn" onclick="visFuglBilde()" style="width:100%;margin-top:8px">Vis fugl</button>
+      <button class="btn btn-secondary" id="hør-lyd-btn" onclick="toggleLyd()" style="display:none;width:100%;margin-top:8px">Hør lyd</button>
       <button class="btn btn-primary" id="ny-fugl-btn" onclick="nyFugl()" style="display:none;width:100%;margin-top:8px">
         Neste fugl →
       </button>
@@ -493,11 +520,44 @@
       <a href="https://www.hallvar.no" target="_blank" rel="noopener">hallvar.no</a>
     </div>
     <hr class="burger-divider">
+    <button class="btn btn-ghost" onclick="lukkBurger(); visLagreKodeModal()">Lagre fremgang som kode</button>
+    <button class="btn btn-ghost" onclick="lukkBurger(); visGjenopprettModal()">Gjenopprett fra kode</button>
+    <hr class="burger-divider">
     <button class="btn btn-danger" onclick="lukkBurger(); visResetModal();">Nullstill fremgang</button>
   </div>
 </div>
 
+<audio id="fugl-audio"></audio>
+
 <canvas id="gås-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:999;top:0;left:0;width:100%;height:100%"></canvas>
+
+<!-- Lagre kode modal -->
+<div class="modal-overlay" id="lagre-kode-modal" style="display:none">
+  <div class="modal-box">
+    <h2>Din fremgangskode</h2>
+    <p>Trykk på koden for å kopiere den. Ta vare på den — bruk den til å gjenopprette fremgangen på en ny enhet.</p>
+    <div class="kode-boks" id="kode-visning" onclick="kopierKode()" title="Trykk for å kopiere"></div>
+    <p id="kopi-bekreftelse" style="display:none;color:var(--success);font-size:0.9rem;margin:-0.5rem 0 0.75rem">Kopiert!</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="kopierKode()">Kopier</button>
+      <button class="btn btn-secondary" onclick="skjulLagreKodeModal()">Lukk</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gjenopprett modal -->
+<div class="modal-overlay" id="gjenopprett-modal" style="display:none">
+  <div class="modal-box">
+    <h2>Gjenopprett fremgang</h2>
+    <p>Lim inn fremgangskoden din her.</p>
+    <textarea id="kode-input" style="width:100%;font-family:monospace;font-size:0.85rem;padding:0.75rem;border:2px solid #C8BFA8;border-radius:8px;height:90px;resize:none;margin-bottom:0.75rem;outline:none;" placeholder="Lim inn kode her…"></textarea>
+    <p id="kode-feil" style="display:none;color:var(--danger);font-size:0.85rem;margin:-0.25rem 0 0.75rem">Ugyldig kode. Prøv igjen.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="gjenopprettFraKode()">Gjenopprett</button>
+      <button class="btn btn-secondary" onclick="skjulGjenopprettModal()">Avbryt</button>
+    </div>
+  </div>
+</div>
 
 <!-- Reset modal -->
 <div class="modal-overlay" id="reset-modal" style="display:none">
@@ -757,6 +817,8 @@ const state = {
   bildeUrl: null,
   bildeAttribution: null,
   bildeLastes: false,
+  lydLastes: false,
+  lydSpiller: false,
 };
 
 // ─── ALGORITMER ──────────────────────────────────────────────
@@ -798,6 +860,113 @@ function velgNeste() {
 function lagreTilLocalStorage() {
   localStorage.setItem('bv-mestra', JSON.stringify([...state.mestra]));
   localStorage.setItem('bv-feilkø', JSON.stringify(state.feilKø));
+}
+
+// ─── LYD ─────────────────────────────────────────────────────
+const lydCache = {};
+let aktivAudio = null;
+
+async function hentLyd(fugl) {
+  const nøkkel = fugl.latin;
+  if (nøkkel in lydCache) return lydCache[nøkkel];
+  try {
+    const r = await fetch(
+      `https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(fugl.latin + ' q_gt:D')}`
+    );
+    if (!r.ok) { lydCache[nøkkel] = null; return null; }
+    const d = await r.json();
+    if (!d.recordings?.length) { lydCache[nøkkel] = null; return null; }
+    const rec = d.recordings[0];
+    const url = rec.file.startsWith('//') ? 'https:' + rec.file : rec.file;
+    lydCache[nøkkel] = { url, kreditering: rec.rec };
+    return lydCache[nøkkel];
+  } catch { lydCache[nøkkel] = null; return null; }
+}
+
+async function toggleLyd() {
+  if (aktivAudio && !aktivAudio.paused) {
+    aktivAudio.pause();
+    aktivAudio.currentTime = 0;
+    state.lydSpiller = false;
+    render();
+    return;
+  }
+  const fuglVedKlikk = state.aktivFugl;
+  state.lydLastes = true;
+  render();
+  const resultat = await hentLyd(fuglVedKlikk);
+  if (state.aktivFugl !== fuglVedKlikk) return;
+  state.lydLastes = false;
+  if (!resultat) { render(); return; }
+  aktivAudio = new Audio(resultat.url);
+  aktivAudio.onended = () => { state.lydSpiller = false; render(); };
+  aktivAudio.onerror = () => { state.lydSpiller = false; render(); };
+  state.lydSpiller = true;
+  render();
+  aktivAudio.play().catch(() => { state.lydSpiller = false; render(); });
+}
+
+// ─── FREMGANGSKODE ───────────────────────────────────────────
+function lagKode() {
+  const bytes = new Uint8Array(29);
+  for (const id of state.mestra) {
+    const i = id - 1;
+    bytes[Math.floor(i / 8)] |= 1 << (i % 8);
+  }
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function lastKode(kode) {
+  try {
+    const b64 = kode.trim().replace(/-/g, '+').replace(/_/g, '/');
+    const str = atob(b64);
+    if (str.length !== 29) return false;
+    const bytes = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+    const mestra = new Set();
+    for (let i = 0; i < 228; i++) {
+      if (bytes[Math.floor(i / 8)] & (1 << (i % 8))) mestra.add(i + 1);
+    }
+    state.mestra  = mestra;
+    state.feilKø  = [];
+    lagreTilLocalStorage();
+    render();
+    return true;
+  } catch { return false; }
+}
+
+function visLagreKodeModal() {
+  document.getElementById('kode-visning').textContent = lagKode();
+  document.getElementById('kopi-bekreftelse').style.display = 'none';
+  document.getElementById('lagre-kode-modal').style.display = 'flex';
+}
+function skjulLagreKodeModal() {
+  document.getElementById('lagre-kode-modal').style.display = 'none';
+}
+function kopierKode() {
+  const kode = document.getElementById('kode-visning').textContent;
+  navigator.clipboard.writeText(kode).then(() => {
+    const el = document.getElementById('kopi-bekreftelse');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 2000);
+  });
+}
+function visGjenopprettModal() {
+  document.getElementById('kode-input').value = '';
+  document.getElementById('kode-feil').style.display = 'none';
+  document.getElementById('gjenopprett-modal').style.display = 'flex';
+}
+function skjulGjenopprettModal() {
+  document.getElementById('gjenopprett-modal').style.display = 'none';
+}
+function gjenopprettFraKode() {
+  const kode = document.getElementById('kode-input').value;
+  if (lastKode(kode)) {
+    skjulGjenopprettModal();
+  } else {
+    document.getElementById('kode-feil').style.display = 'block';
+  }
 }
 
 // ─── BILDER ──────────────────────────────────────────────────
@@ -943,6 +1112,25 @@ function render() {
   visFuglBtn.style.opacity = visFuglBrukt ? '0.4' : '1';
   visFuglBtn.style.cursor  = visFuglBrukt ? 'not-allowed' : '';
 
+  const hørLydBtn = document.getElementById('hør-lyd-btn');
+  const visLyd = state.visBilde || state.feedback?.type === 'riktig';
+  hørLydBtn.style.display = visLyd ? 'block' : 'none';
+  if (visLyd) {
+    if (state.lydLastes) {
+      hørLydBtn.textContent = 'Laster lyd…';
+      hørLydBtn.disabled = true;
+      hørLydBtn.style.opacity = '0.5';
+    } else if (state.lydSpiller) {
+      hørLydBtn.textContent = '⏹ Stopp lyd';
+      hørLydBtn.disabled = false;
+      hørLydBtn.style.opacity = '1';
+    } else {
+      hørLydBtn.textContent = 'Hør lyd';
+      hørLydBtn.disabled = false;
+      hørLydBtn.style.opacity = '1';
+    }
+  }
+
   const inp = document.getElementById('svar-input');
   inp.disabled = !!state.feedback;
 
@@ -1034,6 +1222,7 @@ function visHint() {
 }
 
 function nyFugl() {
+  if (aktivAudio) { aktivAudio.pause(); aktivAudio.currentTime = 0; aktivAudio = null; }
   if (state.aktivFugl)
     state.historikk = [...state.historikk, state.aktivFugl.id].slice(-10);
   state.aktivFugl        = velgNeste();
@@ -1044,9 +1233,12 @@ function nyFugl() {
   state.bildeUrl         = null;
   state.bildeAttribution = null;
   state.bildeLastes      = false;
+  state.lydLastes        = false;
+  state.lydSpiller       = false;
   document.getElementById('svar-input').value = '';
   render();
   if (window.innerWidth <= 768) window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => { hentBilde(state.aktivFugl); hentLyd(state.aktivFugl); }, 800);
 }
 
 function nullstill() {
@@ -1060,6 +1252,9 @@ function nullstill() {
   state.bildeUrl         = null;
   state.bildeAttribution = null;
   state.bildeLastes      = false;
+  state.lydLastes        = false;
+  state.lydSpiller       = false;
+  if (aktivAudio) { aktivAudio.pause(); aktivAudio = null; }
   state.aktivFugl        = velgNeste();
   document.getElementById('svar-input').value = '';
   skjulResetModal();
