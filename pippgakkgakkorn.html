@@ -136,9 +136,13 @@
 
   .hint-knapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
     margin-top: 8px;
+  }
+  .hint-knapper .btn {
+    font-size: 0.78rem;
+    padding: 0.6rem 0.4rem;
   }
 
   .btn {
@@ -488,7 +492,8 @@
 
       <button class="btn btn-primary" id="sjekk-btn" onclick="sjekkSvar()" style="width:100%;margin-bottom:8px">Registrer svar</button>
       <div class="hint-knapper">
-        <button class="btn btn-secondary" id="vis-fugl-btn" onclick="visFuglBilde()">Hint: Vis fugl</button>
+        <button class="btn btn-secondary" id="hint-bokstaver-btn" onclick="visHint()">Hint: Bokstaver</button>
+        <button class="btn btn-secondary" id="vis-fugl-btn" onclick="visFuglBilde()">Hint: Bilde</button>
         <button class="btn btn-secondary" id="pass-btn" onclick="giOpp()">Ny fugl</button>
       </div>
       <button class="btn btn-primary" id="ny-fugl-btn" onclick="nyFugl()" style="display:none;width:100%;margin-top:8px">
@@ -1073,6 +1078,12 @@ function render() {
   visFuglBtn.disabled      = visFuglBrukt;
   visFuglBtn.style.opacity = visFuglBrukt ? '0.4' : '1';
   visFuglBtn.style.cursor  = visFuglBrukt ? 'not-allowed' : '';
+
+  const hintBokstaverBtn  = document.getElementById('hint-bokstaver-btn');
+  const hintBrukt         = state.hintNivå >= 2;
+  hintBokstaverBtn.disabled      = hintBrukt;
+  hintBokstaverBtn.style.opacity = hintBrukt ? '0.4' : '1';
+  hintBokstaverBtn.style.cursor  = hintBrukt ? 'not-allowed' : '';
 
 const inp = document.getElementById('svar-input');
   inp.disabled = harFeedback;
