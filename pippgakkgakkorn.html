@@ -877,7 +877,7 @@ async function hentLyd(fugl) {
   if (nøkkel in lydCache) return lydCache[nøkkel];
   try {
     const r = await fetch(
-      `https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(fugl.latin)}`
+      `https://www.xeno-canto.org/api/2/recordings?query=${encodeURIComponent(fugl.latin)}`
     );
     if (!r.ok) { lydCache[nøkkel] = null; return null; }
     const d = await r.json();
