@@ -134,11 +134,6 @@
   .svar-input:focus { border-color: var(--forest); }
   .svar-input:disabled { opacity: 0.5; cursor: not-allowed; background: #F5EED8; }
 
-  .knapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
   .hint-knapper {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -487,16 +482,14 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
+        onkeydown="if(event.key==='Enter')sjekkSvar()"
       >
 
-      <div class="knapper">
-        <button class="btn btn-primary" onclick="sjekkSvar()">Sjekk svar</button>
-        <button class="btn btn-secondary" onclick="giOpp()">Vet ikke</button>
-      </div>
+      <button class="btn btn-primary" id="sjekk-btn" onclick="sjekkSvar()" style="width:100%;margin-bottom:8px">Sjekk</button>
       <div class="hint-knapper">
-        <button class="btn btn-secondary" id="hint-btn" onclick="visHint()">Hint ord</button>
-        <button class="btn btn-secondary" id="vis-fugl-btn" onclick="visFuglBilde()">Hint bilde</button>
-        <button class="btn btn-secondary" id="hør-lyd-btn" onclick="toggleLyd()">Hint lyd</button>
+        <button class="btn btn-secondary" id="vis-fugl-btn" onclick="visFuglBilde()">Vis fugl</button>
+        <button class="btn btn-secondary" id="hør-lyd-btn" onclick="toggleLyd()">Spill lyd</button>
+        <button class="btn btn-secondary" id="pass-btn" onclick="giOpp()">Pass</button>
       </div>
       <button class="btn btn-primary" id="ny-fugl-btn" onclick="nyFugl()" style="display:none;width:100%;margin-top:8px">
         Neste fugl →
@@ -1118,6 +1111,14 @@ function render() {
     bildeOmrade.style.display = 'none';
   }
 
+  const harFeedback = !!state.feedback;
+
+  const sjekkBtn = document.getElementById('sjekk-btn');
+  sjekkBtn.style.display = harFeedback ? 'none' : 'block';
+
+  const passBtn = document.getElementById('pass-btn');
+  passBtn.style.display = harFeedback ? 'none' : 'block';
+
   const visFuglBtn   = document.getElementById('vis-fugl-btn');
   const visFuglBrukt = state.visBilde || state.bildeLastes;
   visFuglBtn.disabled      = visFuglBrukt;
@@ -1134,19 +1135,13 @@ function render() {
     hørLydBtn.disabled = false;
     hørLydBtn.style.opacity = '1';
   } else {
-    hørLydBtn.textContent = 'Hint lyd';
+    hørLydBtn.textContent = 'Spill lyd';
     hørLydBtn.disabled = false;
     hørLydBtn.style.opacity = '1';
   }
 
   const inp = document.getElementById('svar-input');
-  inp.disabled = !!state.feedback;
-
-  const hintBtn    = document.getElementById('hint-btn');
-  const hintUtbrukt = state.feedback || state.hintNivå >= 2;
-  hintBtn.disabled      = hintUtbrukt;
-  hintBtn.style.opacity = hintUtbrukt ? '0.4' : '1';
-  hintBtn.style.cursor  = hintUtbrukt ? 'not-allowed' : '';
+  inp.disabled = harFeedback;
 
   const fbEl      = document.getElementById('feedback-omrade');
   const nyFuglBtn = document.getElementById('ny-fugl-btn');
