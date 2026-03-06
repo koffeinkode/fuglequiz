@@ -366,8 +366,9 @@
       flex-direction: column;
       justify-content: center;
     }
-    .sidebar-tittel h1 { font-size: 1.7rem; margin: 0; line-height: 1.1; }
-    .sidebar-tittel p  { display: block; font-size: 1rem; margin: 0.2rem 0 0; opacity: 0.8; }
+    .sidebar-tittel h1 br { display: none; }
+    .sidebar-tittel h1 { font-size: 1rem; margin: 0; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-tittel p  { display: block; font-size: 0.78rem; margin: 0.1rem 0 0; opacity: 0.8; }
     .sidebar-hoyre {
       display: flex;
       flex-direction: row;
@@ -387,8 +388,8 @@
     .sidebar .divider,
     .sidebar .btn-danger,
     .sidebar .sidebar-bunn { display: none; }
-    .quiz-area { order: 2; padding: 1rem; padding-bottom: 230px; max-width: 100%; }
-    .fugl-bilde { width: 100%; height: auto; max-height: calc(100dvh - 430px); object-fit: contain; background: #F0EDE5; }
+    .quiz-area { order: 2; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1rem; padding-bottom: 220px; max-width: 100%; }
+    .fugl-bilde { width: 100%; height: auto; max-height: min(40vh, 280px); object-fit: contain; background: #F0EDE5; }
     .burger-btn {
       display: flex;
       flex-direction: column;
@@ -889,26 +890,34 @@ function stoppLyd() {
   state.lydSpiller = false;
 }
 
-async function toggleLyd() {
+function spillFraCache(url) {
   const audio = document.getElementById('fugl-audio');
-  if (state.lydSpiller) {
-    stoppLyd();
-    render();
-    return;
-  }
-  const fuglVedKlikk = state.aktivFugl;
-  state.lydLastes = true;
-  render();
-  const resultat = await hentLyd(fuglVedKlikk);
-  if (state.aktivFugl !== fuglVedKlikk) return;
-  state.lydLastes = false;
-  if (!resultat) { render(); return; }
-  audio.src = resultat.url;
+  if (audio.src !== url) audio.src = url;
   audio.onended = () => { state.lydSpiller = false; render(); };
   audio.onerror = () => { state.lydSpiller = false; render(); };
   state.lydSpiller = true;
   render();
   audio.play().catch(() => { state.lydSpiller = false; render(); });
+}
+
+async function toggleLyd() {
+  if (state.lydSpiller) { stoppLyd(); render(); return; }
+  const fuglVedKlikk = state.aktivFugl;
+  const nøkkel = fuglVedKlikk.latin;
+
+  // Safari-safe: cache-treff → spill synkront fra user gesture (ingen await)
+  if (nøkkel in lydCache) {
+    if (!lydCache[nøkkel]) return;
+    spillFraCache(lydCache[nøkkel].url);
+    return;
+  }
+
+  // Ikke cachet ennå: hent URL, vis "Spill lyd" igjen etterpå (bruker klikker én gang til)
+  state.lydLastes = true; render();
+  await hentLyd(fuglVedKlikk);
+  if (state.aktivFugl !== fuglVedKlikk) return;
+  state.lydLastes = false;
+  render();
 }
 
 // ─── FREMGANGSKODE ───────────────────────────────────────────
