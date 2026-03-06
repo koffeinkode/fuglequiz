@@ -877,8 +877,15 @@ async function hentLyd(fugl) {
     const d = await r.json();
     if (!d.recordings?.length) { lydCache[nøkkel] = null; return null; }
     const rec = d.recordings[0];
-    const url = rec.file.startsWith('//') ? 'https:' + rec.file : rec.file;
+    let url = rec.file.startsWith('//') ? 'https:' + rec.file : rec.file;
+    if (url.startsWith('http://')) url = 'https' + url.slice(4);
     lydCache[nøkkel] = { url };
+    // Forhåndslast audio-elementet så play() funker synkront i Safari
+    const audio = document.getElementById('fugl-audio');
+    if (!state.lydSpiller && audio.src !== url) {
+      audio.src = url;
+      audio.load();
+    }
     return lydCache[nøkkel];
   } catch { lydCache[nøkkel] = null; return null; }
 }
@@ -1250,7 +1257,8 @@ function nyFugl() {
   document.getElementById('svar-input').value = '';
   render();
   if (window.innerWidth <= 768) window.scrollTo({ top: 0, behavior: 'smooth' });
-  setTimeout(() => { hentBilde(state.aktivFugl); hentLyd(state.aktivFugl); }, 800);
+  hentLyd(state.aktivFugl);
+  setTimeout(() => { hentBilde(state.aktivFugl); }, 800);
 }
 
 function nullstill() {
@@ -1374,6 +1382,7 @@ function feirRiktig(antall = 160) {
 // ─── INIT ────────────────────────────────────────────────────
 state.aktivFugl = velgNeste();
 render();
+hentLyd(state.aktivFugl);
 </script>
 </body>
 </html>
